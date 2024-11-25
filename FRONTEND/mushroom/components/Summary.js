@@ -1,34 +1,48 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import { StyleSheet, Text, View, Pressable, ImageBackground, FlatList, Modal } from "react-native";
 import { Inter_800ExtraBold, Inter_500Medium } from '@expo-google-fonts/inter';
-import { LineAxisOutlined } from '@mui/icons-material';
 
-function Summary(props) {
+function Summary({ inferenceResults }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMushroom, setSelectedMushroom] = useState(null);
   const [showMushroomList, setShowMushroomList] = useState(false);
-  const [inferenceResults, setInferenceResults] = useState(null);
-  const [imageData, setImageData] = useState(null);
+  const [statusCounts, setStatusCounts] = useState({
+    Ready: 0,
+    "Not Ready": 0,
+    Overdue: 0
+  });
+  const [totalMushrooms, setTotalMushrooms] = useState(0);
 
-  const [mushrooms, setMushrooms] = useState([
-    { id: '1', label: 'Mushroom [Label]', status: 'Ready to Harvest', imageUrl: 'https://i.ytimg.com/vi/8a4oCo7OO9c/hqdefault.jpg' },
-    { id: '2', label: 'Mushroom [Label]', status: 'Not Ready', imageUrl: '' },
-    { id: '3', label: 'Mushroom [Label]', status: 'Overdue', imageUrl: '' },
-    { id: '4', label: 'Mushroom [Label]', status: 'Ready to Harvest', imageUrl: '' },
-    { id: '5', label: 'Mushroom [Label]', status: 'Not Ready', imageUrl: '' }
-  ]);
+  useEffect(() => {
+    if (inferenceResults) {
+      console.log('Received inference results:', inferenceResults);
+      console.log('Received Points: ', inferenceResults.points);
+      const counts = {
+        Ready: 0,
+        "Not Ready": 0,
+        Overdue: 0
+      };
 
-  // const getRoboflowData = async () => {
-  //   try {
-  //     const response = await axios.get('http://localhost:3000/takePhoto');
-  //     const { image, infereceResults } = response.data;
-  //     setImageData(`data:image/jpeg;base64,${image}`);
-  //     setInferenceResults(infereceResults);
-  //   } catch (error) {
-  //     console.error('Error fetching data from backend: ', error);
-  //   }
-  // };
+      if (inferenceResults.predictions && Array.isArray(inferenceResults.predictions)) {
+        inferenceResults.predictions.forEach(prediction => {
+          if(prediction.class === "Ready") {
+            counts.Ready += 1;
+          } else if (prediction.class === "Not-Ready") {
+            counts['Not Ready'] += 1;
+          } else if (prediction.class === "Overdue") {
+            counts.Overdue += 1;
+          }
+        });
+
+        setTotalMushrooms(inferenceResults.predictions.length);
+      } else {
+        setTotalMushrooms(0);
+      }
+
+      setStatusCounts(counts);
+    }
+  }, [inferenceResults]);
 
   const [fontsLoaded] = useFonts({
     Inter_800ExtraBold,
@@ -59,74 +73,29 @@ function Summary(props) {
         resizeMode='cover'
         style={styles.summaryBox}>
         <View style={styles.summaryContainer}>
-          
-          {showMushroomList ? (
-            <View style={styles.detectedMushroomsContainer}>
-              <FlatList
-                data={mushrooms}
-                renderItem={({ item }) => (
-                  <Pressable onPress={() => openModal(item)} style={styles.mushroomItem}>
-                    <Text style={styles.mushroomText}>{item.label}</Text>
-                    <Text style={styles.mushroomStatus}>{item.status}</Text>
-                  </Pressable>
-                )}
-                keyExtractor={item => item.id}
-                style={styles.scrollableList}
-                maxHeight={250} 
-              />
-              <Pressable onPress={collapseMushroomList} style={styles.collapseButton}>
-                <Text style={styles.collapseButtonText}>Collapse</Text>
-              </Pressable>
-            </View>
-          ) : (
             <Pressable onPress={toggleMushroomList} style={[styles.detectedMushroomsContainer, styles.collapsed]}>
-              <Text style={styles.detectedMushroomsCount}>30</Text>
-              <Text style={styles.detectedMushroomsLabel}>Detected</Text>
+              <Text style={styles.detectedMushroomsCount}>{totalMushrooms}</Text>
+              <Text style={styles.detectedMushroomsLabel}>Captured</Text>
               <Text style={styles.detectedMushroomsLabel}>Mushrooms</Text>
             </Pressable>
-          )}
 
-          {!showMushroomList && (
-            <View style={styles.summaryTextContainer}>
+          <View style={styles.summaryTextContainer}>
               <Text style={styles.summaryTitle}>Summary</Text>
               <View style={styles.summaryItem}>
-                <Text style={[styles.circle, styles.readyCircle]}>21</Text>
+                <Text style={[styles.circle, styles.readyCircle]}>{statusCounts.Ready}</Text>
                 <Text style={styles.summaryText}>Ready to Harvest</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={[styles.circle, styles.notReadyCircle]}>9</Text>
+                <Text style={[styles.circle, styles.notReadyCircle]}>{statusCounts['Not Ready']}</Text>
                 <Text style={styles.summaryText}>Not Ready</Text>
               </View>
               <View style={styles.summaryItem}>
-                <Text style={[styles.circle, styles.overdueCircle]}>0</Text>
+                <Text style={[styles.circle, styles.overdueCircle]}>{statusCounts.Overdue}</Text>
                 <Text style={styles.summaryText}>Overdue</Text>
               </View>
             </View>
-          )}
         </View>
-      </ImageBackground>
-
-      {selectedMushroom && (
-        <Modal
-          visible={modalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={closeModal}>
-          <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <ImageBackground
-                source={{ uri: selectedMushroom.imageUrl }}
-                style={styles.modalImage}>
-              </ImageBackground>
-              <Text style={styles.modalTitle}>{selectedMushroom.label}</Text>
-              <Text style={styles.modalStatus}>{selectedMushroom.status}</Text>
-              <Pressable onPress={closeModal} style={styles.closeButton}>
-                <Text style={styles.closeButtonText}>Close</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-      )}
+      </ ImageBackground>
     </View>
   );
 }

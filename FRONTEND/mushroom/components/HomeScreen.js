@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { StyleSheet, View } from 'react-native';
 import NotificationContainer from './Notification';
 import Header from './Header';
@@ -7,6 +7,14 @@ import Summary from './Summary';
 import ShowCameraFeed from './ShowCameraFeed';
 
 function HomeScreen() {
+
+  const [inferenceResults, setInferenceResults] = useState(null);
+
+  const updateInferenceResults = (newInferenceResults) => {
+    console.log('Received new inference results:', newInferenceResults);
+    setInferenceResults(newInferenceResults);
+  };
+
   return (
     <View style={styles.appContainer}>
       <View style={styles.notificationWrapper}>
@@ -17,11 +25,11 @@ function HomeScreen() {
       <Greetings />
 
       <View style={styles.summaryContainer}>
-        <Summary />
+        <Summary inferenceResults={inferenceResults}/>
       </View>
 
       <View style={styles.showCameraFeedContainer}>
-        <ShowCameraFeed />
+        <ShowCameraFeed onInferenceResults={updateInferenceResults}/>
       </View>
     </View>
   );
