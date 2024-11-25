@@ -46,8 +46,8 @@ def capture_video(file_path, duration=3):
         print(f"Error capturing video: {e}")
 
 def upload_to_s3(file_path, bucket_name, object_name):
-    aws_access_key_id = "AKIA3C6FMKDULNTMAD4F"
-    aws_secret_access_key = "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"
+    aws_access_key_id = ""
+    aws_secret_access_key = ""
     s3 = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
 
     try:
