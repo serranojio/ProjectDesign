@@ -1,20 +1,22 @@
 import { StyleSheet, Text, Image, View, Pressable, ActivityIndicator, TouchableOpacity } from "react-native";
 import React, { useState, useEffect } from 'react';
 import { useFonts } from 'expo-font';
-import { Inter_500Medium } from '@expo-google-fonts/inter';
+import { Inter_100Thin, Inter_800ExtraBold, Inter_700Bold, Inter_900Black, Inter_500Medium } from '@expo-google-fonts/inter';
+import { Quicksand_300Light, Quicksand_700Bold } from "@expo-google-fonts/quicksand";
 import axios from "axios";
 
 function ShowCameraFeed({ onInferenceResults }) {
+
   const [imageData, setImageData] = useState('');
   const [loading, setLoading] = useState(false);
-  const [inferenceData, setInferenceData] = useState(null);
-  const [showFeed, setShowFeed] = useState(false);
-  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const [inferenceData, setInferenceData] = useState('');
+  const [showFeed, setShowFeed] = useState(false); 
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const takePhoto = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://192.168.0.104:3000/takePhoto');
+      const response = await axios.get('http://192.168.0.104:3000/takePhoto'); // ip address of local
       if (response.status === 200) {
         setImageData(response.data.image);
         setInferenceData(response.data.inferenceResults);
@@ -27,25 +29,21 @@ function ShowCameraFeed({ onInferenceResults }) {
     } finally {
       setLoading(false);
     }
-  };
+  }; 
 
-  // Function to calculate scaled coordinates
-  const scaleCoordinates = (prediction, containerWidth, containerHeight, originalWidth, originalHeight) => {
-    const scaleX = containerWidth / originalWidth;
-    const scaleY = containerHeight / originalHeight;
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer); 
+  }, []);
 
-    return {
-      x: prediction.x * scaleX - (prediction.width * scaleX) / 2,
-      y: prediction.y * scaleY - (prediction.height * scaleY) / 2,
-      width: prediction.width * scaleX,
-      height: prediction.height * scaleY,
-    };
-  };
+  function pressUserHandler() {
+    setShowFeed(prevState => !prevState); 
+  }
 
-  const onImageLayout = (event) => {
-    const { width, height } = event.nativeEvent.layout;
-    setImageSize({ width, height });
-  };
+  const formattedDate = currentTime.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const formattedTime = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <View style={styles.container}>
@@ -56,54 +54,9 @@ function ShowCameraFeed({ onInferenceResults }) {
           <Text style={styles.ShowCameraFeedText}>Scan</Text>
         )}
       </TouchableOpacity>
-      
       {imageData ? (
         <View style={styles.cameraFeedContainer}>
-          <View style={styles.imageWrapper}>
-            <Image
-              source={{ uri: `data:image/jpeg;base64,${imageData}` }}
-              style={styles.image}
-              onLayout={onImageLayout}
-            />
-            
-            {/* Prediction Overlays */}
-            {inferenceData && inferenceData.predictions && inferenceData.predictions.map((prediction, index) => {
-              const scaled = scaleCoordinates(
-                prediction,
-                imageSize.width,
-                imageSize.height,
-                inferenceData.image.width,
-                inferenceData.image.height
-              );
-
-              return (
-                <View
-                  key={prediction.detection_id}
-                  style={[
-                    styles.predictionBox,
-                    {
-                      left: scaled.x,
-                      top: scaled.y,
-                      width: scaled.width,
-                      height: scaled.height,
-                      borderColor: prediction.class === 'Ready' ? '#48D38A' : '#FFCC00',
-                    },
-                  ]}
-                >
-                  <View style={[
-                    styles.predictionLabel,
-                    {
-                      backgroundColor: prediction.class === 'Ready' ? '#48D38A' : '#FFCC00',
-                    }
-                  ]}>
-                    <Text style={styles.predictionText}>
-                      {`${prediction.class} ${(prediction.confidence * 100).toFixed(0)}%`}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
+          <Image source={{ uri: `data:image/jpeg;base64,${imageData}` }} style={styles.image} />
         </View>
       ) : (
         <View style={styles.squareContainer}></View>
@@ -136,53 +89,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  imageWrapper: {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-  },
-
   image: {
-    width: '100%',
-    height: '100%',
+    width: '90%',
+    height: 200,
     borderRadius: 15,
+    padding: 10,
   },
 
   cameraFeedContainer: {
     width: '90%',
     height: 200,
     borderRadius: 15,
-    marginTop: 10,
-    overflow: 'hidden', // This ensures boxes don't extend outside the container
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10, 
   },
 
-  predictionBox: {
-    position: 'absolute',
-    borderWidth: 2,
-    borderStyle: 'solid',
-  },
-
-  predictionLabel: {
-    position: 'absolute',
-    top: -25,
-    left: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-
-  predictionText: {
+  cameraFeedText: {
+    fontFamily: 'Inter_700Bold',
     color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 18,
+    marginBottom: 10,
   },
 
-  squareContainer: {
-    width: '90%',
+  cameraFeedImage: {
+    marginTop: 15,
+    width: '100%',
     height: 200,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 15,
-    marginTop: 10,
+    borderRadius: 0,
+    resizeMode: 'contain', 
   },
 });
 
