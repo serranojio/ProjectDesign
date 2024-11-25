@@ -1,24 +1,29 @@
-import { StyleSheet, Text, Image, View, Pressable, ActivityIndicator, TouchableOpacity } from "react-native";
-import React, { useState, useEffect } from 'react';
-import { useFonts } from 'expo-font';
-import { Inter_500Medium } from '@expo-google-fonts/inter';
+import { StyleSheet, Text, Image, View, ActivityIndicator, TouchableOpacity } from "react-native";
+import React, { useState } from 'react';
 import axios from "axios";
 
 function ShowCameraFeed({ onInferenceResults }) {
+  // State to hold the base64 image data
   const [imageData, setImageData] = useState('');
+
+  // State to indicate loading state during API call
   const [loading, setLoading] = useState(false);
+
+  // State to hold the inference data (predictions, classes, and confidence)
   const [inferenceData, setInferenceData] = useState(null);
-  const [showFeed, setShowFeed] = useState(false);
+
+  // State to hold the displayed image's dimensions
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
+  // Function to trigger the photo-taking process via API
   const takePhoto = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://192.168.0.104:3000/takePhoto');
+      const response = await axios.get('http://192.168.0.104:3000/takePhoto'); // Replace with your API endpoint
       if (response.status === 200) {
-        setImageData(response.data.image);
-        setInferenceData(response.data.inferenceResults);
-        onInferenceResults(response.data.inferenceResults);
+        setImageData(response.data.image); // Base64 image data
+        setInferenceData(response.data.inferenceResults); // Inference results
+        onInferenceResults(response.data.inferenceResults); // Pass results to parent component
       } else {
         console.error('Failed to take photo');
       }
@@ -29,48 +34,46 @@ function ShowCameraFeed({ onInferenceResults }) {
     }
   };
 
-  // Function to calculate scaled coordinates
+  // Function to scale coordinates to match displayed image size
   const scaleCoordinates = (prediction, containerWidth, containerHeight, originalWidth, originalHeight) => {
-    const scaleX = containerWidth / originalWidth;
-    const scaleY = containerHeight / originalHeight;
+    const scaleX = containerWidth / originalWidth; // Scale factor for width
+    const scaleY = containerHeight / originalHeight; // Scale factor for height
 
     return {
-      x: prediction.x * scaleX - (prediction.width * scaleX) / 2,
-      y: prediction.y * scaleY - (prediction.height * scaleY) / 2,
-      width: prediction.width * scaleX,
-      height: prediction.height * scaleY,
+      x: prediction.x * scaleX - (prediction.width * scaleX) / 2, // Adjusted x
+      y: prediction.y * scaleY - (prediction.height * scaleY) / 2, // Adjusted y
+      width: prediction.width * scaleX, // Adjusted width
+      height: prediction.height * scaleY, // Adjusted height
     };
   };
 
+  // Function to capture the layout dimensions of the image container
   const onImageLayout = (event) => {
-    const { width, height } = event.nativeEvent.layout;
-    setImageSize({ width, height });
+    const { width, height } = event.nativeEvent.layout; // Get layout width and height
+    setImageSize({ width, height }); // Update state with dimensions
   };
 
+  // Function to get styles for each prediction class
   const getClassStyles = (predictionClass) => {
     switch (predictionClass) {
       case 'Ready':
         return {
-          borderColor: '#48D38A',
-          labelColor: '#48D38A',
+          borderColor: '#48D38A', // Green
           backgroundColor: '#48D38A',
         };
       case 'Not Ready':
         return {
-          borderColor: '#FFCC00',
-          labelColor: '#FFCC00',
-          backgroundColor: '#FFCC00',
+          borderColor: '#FFD700', // Yellow
+          backgroundColor: '#FFD700',
         };
       case 'Overdue':
         return {
-          borderColor: '#FF6347', // Example red color for overdue
-          labelColor: '#FF6347',
-          backgroundColor: '#FF6347',
+          borderColor: '#FF0000', // Red
+          backgroundColor: '#FF0000',
         };
       default:
         return {
-          borderColor: '#000000',
-          labelColor: '#000000',
+          borderColor: '#000000', // Black for unknown classes
           backgroundColor: '#000000',
         };
     }
@@ -78,6 +81,7 @@ function ShowCameraFeed({ onInferenceResults }) {
 
   return (
     <View style={styles.container}>
+      {/* Button to trigger photo capture */}
       <TouchableOpacity style={styles.cameraFeedPressable} onPress={takePhoto}>
         {loading ? (
           <ActivityIndicator size="small" color="#fff" />
@@ -85,18 +89,21 @@ function ShowCameraFeed({ onInferenceResults }) {
           <Text style={styles.ShowCameraFeedText}>Scan</Text>
         )}
       </TouchableOpacity>
-      
+
+      {/* Display the image and predictions */}
       {imageData ? (
         <View style={styles.cameraFeedContainer}>
           <View style={styles.imageWrapper}>
+            {/* Display the captured image */}
             <Image
               source={{ uri: `data:image/jpeg;base64,${imageData}` }}
               style={styles.image}
-              onLayout={onImageLayout}
+              onLayout={onImageLayout} // Capture layout dimensions
             />
-            
-            {/* Prediction Overlays */}
+
+            {/* Overlay predictions */}
             {inferenceData && inferenceData.predictions && inferenceData.predictions.map((prediction, index) => {
+              // Scale the bounding box coordinates to match the displayed image size
               const scaled = scaleCoordinates(
                 prediction,
                 imageSize.width,
@@ -105,7 +112,8 @@ function ShowCameraFeed({ onInferenceResults }) {
                 inferenceData.image.height
               );
 
-              const stylesforClass = getClassStyles(prediction.class);
+              // Get styles for the current class
+              const stylesForClass = getClassStyles(prediction.class);
 
               return (
                 <View
@@ -113,19 +121,18 @@ function ShowCameraFeed({ onInferenceResults }) {
                   style={[
                     styles.predictionBox,
                     {
-                      left: scaled.x,
-                      top: scaled.y,
-                      width: scaled.width,
-                      height: scaled.height,
-                      borderColor: prediction.class === 'Ready' ? '#48D38A' : '#FFCC00',
+                      left: scaled.x, // Position x
+                      top: scaled.y, // Position y
+                      width: scaled.width, // Scaled width
+                      height: scaled.height, // Scaled height
+                      borderColor: stylesForClass.borderColor, // Dynamic border color
                     },
                   ]}
                 >
+                  {/* Display label for prediction */}
                   <View style={[
                     styles.predictionLabel,
-                    {
-                      backgroundColor: prediction.class === 'Ready' ? '#48D38A' : '#FFCC00',
-                    }
+                    { backgroundColor: stylesForClass.backgroundColor }
                   ]}>
                     <Text style={styles.predictionText}>
                       {`${prediction.class} ${(prediction.confidence * 100).toFixed(0)}%`}
@@ -137,7 +144,7 @@ function ShowCameraFeed({ onInferenceResults }) {
           </View>
         </View>
       ) : (
-        <View style={styles.squareContainer}></View>
+        <View style={styles.squareContainer}></View> // Placeholder if no image is captured
       )}
     </View>
   );
@@ -153,7 +160,6 @@ const styles = StyleSheet.create({
   cameraFeedPressable: {
     backgroundColor: '#15412D',
     borderRadius: 25,
-    alignContent: 'center',
     width: '90%',
     height: 30,
     justifyContent: 'center',
@@ -161,7 +167,6 @@ const styles = StyleSheet.create({
   },
 
   ShowCameraFeedText: {
-    fontFamily: 'Inter_500Medium',
     color: 'white',
     textAlign: 'center',
     fontSize: 16,
@@ -184,13 +189,12 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 15,
     marginTop: 10,
-    overflow: 'hidden', // This ensures boxes don't extend outside the container
+    overflow: 'hidden',
   },
 
   predictionBox: {
     position: 'absolute',
     borderWidth: 2,
-    borderStyle: 'solid',
   },
 
   predictionLabel: {
