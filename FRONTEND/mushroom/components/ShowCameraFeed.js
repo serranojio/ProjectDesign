@@ -1,22 +1,20 @@
 import { StyleSheet, Text, Image, View, Pressable, ActivityIndicator, TouchableOpacity } from "react-native";
 import React, { useState, useEffect } from 'react';
 import { useFonts } from 'expo-font';
-import { Inter_100Thin, Inter_800ExtraBold, Inter_700Bold, Inter_900Black, Inter_500Medium } from '@expo-google-fonts/inter';
-import { Quicksand_300Light, Quicksand_700Bold } from "@expo-google-fonts/quicksand";
+import { Inter_500Medium } from '@expo-google-fonts/inter';
 import axios from "axios";
 
 function ShowCameraFeed({ onInferenceResults }) {
-
   const [imageData, setImageData] = useState('');
   const [loading, setLoading] = useState(false);
-  const [inferenceData, setInferenceData] = useState('');
-  const [showFeed, setShowFeed] = useState(false); 
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [inferenceData, setInferenceData] = useState(null);
+  const [showFeed, setShowFeed] = useState(false);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
 
   const takePhoto = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://192.168.0.104:3000/takePhoto'); // ip address of local
+      const response = await axios.get('http://192.168.0.104:3000/takePhoto');
       if (response.status === 200) {
         setImageData(response.data.image);
         setInferenceData(response.data.inferenceResults);
@@ -29,21 +27,54 @@ function ShowCameraFeed({ onInferenceResults }) {
     } finally {
       setLoading(false);
     }
-  }; 
+  };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer); 
-  }, []);
+  // Function to calculate scaled coordinates
+  const scaleCoordinates = (prediction, containerWidth, containerHeight, originalWidth, originalHeight) => {
+    const scaleX = containerWidth / originalWidth;
+    const scaleY = containerHeight / originalHeight;
 
-  function pressUserHandler() {
-    setShowFeed(prevState => !prevState); 
-  }
+    return {
+      x: prediction.x * scaleX - (prediction.width * scaleX) / 2,
+      y: prediction.y * scaleY - (prediction.height * scaleY) / 2,
+      width: prediction.width * scaleX,
+      height: prediction.height * scaleY,
+    };
+  };
 
-  const formattedDate = currentTime.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const formattedTime = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const onImageLayout = (event) => {
+    const { width, height } = event.nativeEvent.layout;
+    setImageSize({ width, height });
+  };
+
+  const getClassStyles = (predictionClass) => {
+    switch (predictionClass) {
+      case 'Ready':
+        return {
+          borderColor: '#48D38A',
+          labelColor: '#48D38A',
+          backgroundColor: '#48D38A',
+        };
+      case 'Not Ready':
+        return {
+          borderColor: '#FFCC00',
+          labelColor: '#FFCC00',
+          backgroundColor: '#FFCC00',
+        };
+      case 'Overdue':
+        return {
+          borderColor: '#FF6347', // Example red color for overdue
+          labelColor: '#FF6347',
+          backgroundColor: '#FF6347',
+        };
+      default:
+        return {
+          borderColor: '#000000',
+          labelColor: '#000000',
+          backgroundColor: '#000000',
+        };
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -54,9 +85,56 @@ function ShowCameraFeed({ onInferenceResults }) {
           <Text style={styles.ShowCameraFeedText}>Scan</Text>
         )}
       </TouchableOpacity>
+      
       {imageData ? (
         <View style={styles.cameraFeedContainer}>
-          <Image source={{ uri: `data:image/jpeg;base64,${imageData}` }} style={styles.image} />
+          <View style={styles.imageWrapper}>
+            <Image
+              source={{ uri: `data:image/jpeg;base64,${imageData}` }}
+              style={styles.image}
+              onLayout={onImageLayout}
+            />
+            
+            {/* Prediction Overlays */}
+            {inferenceData && inferenceData.predictions && inferenceData.predictions.map((prediction, index) => {
+              const scaled = scaleCoordinates(
+                prediction,
+                imageSize.width,
+                imageSize.height,
+                inferenceData.image.width,
+                inferenceData.image.height
+              );
+
+              const stylesforClass = getClassStyles(prediction.class);
+
+              return (
+                <View
+                  key={prediction.detection_id}
+                  style={[
+                    styles.predictionBox,
+                    {
+                      left: scaled.x,
+                      top: scaled.y,
+                      width: scaled.width,
+                      height: scaled.height,
+                      borderColor: prediction.class === 'Ready' ? '#48D38A' : '#FFCC00',
+                    },
+                  ]}
+                >
+                  <View style={[
+                    styles.predictionLabel,
+                    {
+                      backgroundColor: prediction.class === 'Ready' ? '#48D38A' : '#FFCC00',
+                    }
+                  ]}>
+                    <Text style={styles.predictionText}>
+                      {`${prediction.class} ${(prediction.confidence * 100).toFixed(0)}%`}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         </View>
       ) : (
         <View style={styles.squareContainer}></View>
@@ -89,36 +167,53 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
+  imageWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: '100%',
+  },
+
   image: {
-    width: '90%',
-    height: 200,
+    width: '100%',
+    height: '100%',
     borderRadius: 15,
-    padding: 10,
   },
 
   cameraFeedContainer: {
     width: '90%',
     height: 200,
     borderRadius: 15,
-    padding: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10, 
+    marginTop: 10,
+    overflow: 'hidden', // This ensures boxes don't extend outside the container
   },
 
-  cameraFeedText: {
-    fontFamily: 'Inter_700Bold',
+  predictionBox: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderStyle: 'solid',
+  },
+
+  predictionLabel: {
+    position: 'absolute',
+    top: -25,
+    left: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+
+  predictionText: {
     color: 'white',
-    fontSize: 18,
-    marginBottom: 10,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 
-  cameraFeedImage: {
-    marginTop: 15,
-    width: '100%',
+  squareContainer: {
+    width: '90%',
     height: 200,
-    borderRadius: 0,
-    resizeMode: 'contain', 
+    backgroundColor: '#f0f0f0',
+    borderRadius: 15,
+    marginTop: 10,
   },
 });
 
