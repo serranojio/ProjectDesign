@@ -5,7 +5,6 @@ import { Inter_800ExtraBold, Inter_300Light, Inter_400Regular, Inter_700Bold, In
 import { Quicksand_300Light, Quicksand_700Bold } from "@expo-google-fonts/quicksand";
 
 function Greetings(props){
-    const [enteredGoalText, setEnteredGoalText] = useState('');
 
     const [fontsLoaded] = useFonts({
         Inter_800ExtraBold,
@@ -31,20 +30,6 @@ function Greetings(props){
             return 'Good evening';
         }
     }
-
-    // function goalInputHandler(enteredText) {
-    //     setEnteredGoalText(enteredText);
-    // };
-
-    // function addGoalHandler() {
-    //     props.onAddGoal(enteredGoalText);
-    //     setEnteredGoalText(''); 
-    //     setModalVisible(true);
-    //     setTimeout(() => {
-    //         setModalVisible(false);
-    //     }, 1000);
-    
-    // };
 
     return(
         <View style={styles.greetingsContainer}>

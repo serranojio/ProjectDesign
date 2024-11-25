@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { useFonts } from 'expo-font';
 import { StyleSheet, Text, View, Pressable, ImageBackground, FlatList, Modal } from "react-native";
 import { Inter_800ExtraBold, Inter_500Medium } from '@expo-google-fonts/inter';
+import { LineAxisOutlined } from '@mui/icons-material';
 
 function Summary(props) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMushroom, setSelectedMushroom] = useState(null);
   const [showMushroomList, setShowMushroomList] = useState(false);
+  const [inferenceResults, setInferenceResults] = useState(null);
+  const [imageData, setImageData] = useState(null);
+
   const [mushrooms, setMushrooms] = useState([
     { id: '1', label: 'Mushroom [Label]', status: 'Ready to Harvest', imageUrl: 'https://i.ytimg.com/vi/8a4oCo7OO9c/hqdefault.jpg' },
     { id: '2', label: 'Mushroom [Label]', status: 'Not Ready', imageUrl: '' },
@@ -14,6 +18,17 @@ function Summary(props) {
     { id: '4', label: 'Mushroom [Label]', status: 'Ready to Harvest', imageUrl: '' },
     { id: '5', label: 'Mushroom [Label]', status: 'Not Ready', imageUrl: '' }
   ]);
+
+  // const getRoboflowData = async () => {
+  //   try {
+  //     const response = await axios.get('http://localhost:3000/takePhoto');
+  //     const { image, infereceResults } = response.data;
+  //     setImageData(`data:image/jpeg;base64,${image}`);
+  //     setInferenceResults(infereceResults);
+  //   } catch (error) {
+  //     console.error('Error fetching data from backend: ', error);
+  //   }
+  // };
 
   const [fontsLoaded] = useFonts({
     Inter_800ExtraBold,

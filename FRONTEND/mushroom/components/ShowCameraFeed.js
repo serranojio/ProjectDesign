@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import { Inter_100Thin, Inter_800ExtraBold, Inter_700Bold, Inter_900Black, Inter_500Medium } from '@expo-google-fonts/inter';
 import { Quicksand_300Light, Quicksand_700Bold } from "@expo-google-fonts/quicksand";
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import axios from "axios";
 
 function ShowCameraFeed() {
@@ -26,7 +25,7 @@ function ShowCameraFeed() {
   const takePhoto = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://192.168.1.8:3000/takePhoto');
+      const response = await axios.get('http://192.168.0.104:3000/takePhoto'); // ip address of local
       if (response.status === 200) {
         console.log('Photo taken successfully');
         setImageData(response.data.image);
